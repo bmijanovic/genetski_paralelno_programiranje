@@ -3,7 +3,11 @@
 #include "GA.h"
 #include <vector>
 #include <algorithm>
+#include <tbb\blocked_range.h>
+#include <tbb\parallel_reduce.h>
+
 using namespace std;
+using namespace tbb;
 
 bool sortByFirstAsc(const pair<int, Unit*>& a,
 	const pair<int, Unit*>& b)
@@ -31,7 +35,7 @@ GA::GA(int populationSize = 1000, int iterations = 100, double mutationFactor = 
 	this->rng = mt19937(chrono::system_clock::now().time_since_epoch().count());
 }
 
-void GA::simulate()	
+void GA::simulate()
 {
 	Unit* best = new Unit();
 	for (int i = 0; i < iterations; i++)
@@ -43,17 +47,14 @@ void GA::simulate()
 	cout << "Maximum value is: " << best->getQuality() << endl << "Maximum weight is: " << best->getWeight() << endl;
 }
 
-double GetTime(){
+double GetTime() {
 	return (double)clock() / CLOCKS_PER_SEC;
 }
 
-double totalRand = 0;
-double totalSort = 0;
-
-pair<vector<int>, vector<int>> GA::_parentSelection(vector<pair<int, Unit*>> &parents)
+pair<vector<int>, vector<int>> GA::_parentSelection(vector<pair<int, Unit*>>& parents)
 {
-	vector<pair<int, vector<int>>> rangedParents(populationSize);
-	for (int i = 0; i < populationSize; i++)
+	vector<pair<int, vector<int>>> rangedParents(parents.size());
+	for (int i = 0; i < parents.size(); i++)
 	{
 		pair<int, vector<int>> par;
 		par.first = i * rand01();
@@ -62,7 +63,7 @@ pair<vector<int>, vector<int>> GA::_parentSelection(vector<pair<int, Unit*>> &pa
 	}
 
 	int maxInd = -1, secMaxInd = -1;
-	for (int i = 0; i < populationSize; i++)
+	for (int i = 0; i < parents.size(); i++)
 	{
 		if (maxInd == -1 || rangedParents[i].first > rangedParents[maxInd].first)
 		{
@@ -80,10 +81,53 @@ pair<vector<int>, vector<int>> GA::_parentSelection(vector<pair<int, Unit*>> &pa
 	return returnValue;
 }
 
-vector<Unit*> GA::_breed(vector<pair<int, Unit*>> parents)
+vector<Unit*> GA::_parallel_breed(vector<pair<int, Unit*>> parents, int parentsSize)
+{
+	task_group g;
+	vector<Unit*> children;
+	vector<Unit*> children1;
+	vector<Unit*> children2;
+	vector<Unit*> children3;
+	vector<Unit*> children4;
+
+	if (parentsSize <= GA::CUTOFF)
+	{
+		children = _breed(parents, parentsSize);
+	}
+	else
+	{
+		int size = parentsSize / 4;
+		vector<pair<int, Unit*>>::const_iterator first = parents.begin();
+
+		/*vector<pair<int, Unit*>> v1(first, first + size);
+		vector<pair<int, Unit*>> v2(first + size, first + size * 2);
+		vector<pair<int, Unit*>> v3(first + size * 2, first + size * 3);
+		vector<pair<int, Unit*>> v4(first + size * 3, first + size * 4);
+
+		g.run([&] {children1 = _parallel_breed(v1, size); });
+		g.run([&] {children2 = _parallel_breed(v2, size); });
+		g.run([&] {children3 = _parallel_breed(v3, size); });
+		g.run([&] {children4 = _parallel_breed(v4, size); });*/
+
+		g.run([&] {children1 = _parallel_breed(parents, size); });
+		g.run([&] {children2 = _parallel_breed(parents, size); });
+		g.run([&] {children3 = _parallel_breed(parents, size); });
+		g.run([&] {children4 = _parallel_breed(parents, size); });
+		g.wait();
+	}
+	children.insert(children.end(), children1.begin(), children1.end());
+	children.insert(children.end(), children2.begin(), children2.end());
+	children.insert(children.end(), children3.begin(), children3.end());
+	children.insert(children.end(), children4.begin(), children4.end());
+
+	return children;
+}
+
+
+vector<Unit*> GA::_breed(vector<pair<int, Unit*>> parents, int parentsSize)
 {
 	vector<Unit*> children;
-	for (int i = 0; i < populationSize / 2; i++)
+	for (int i = 0; i < parentsSize / 2; i++)
 	{
 		pair<vector<int>, vector<int>> parentsData = _parentSelection(parents);
 		int splitPosition = (rng() % Unit::dimension);
@@ -100,7 +144,7 @@ vector<Unit*> GA::_breed(vector<pair<int, Unit*>> parents)
 
 		Unit* child1 = new Unit(childData1);
 		Unit* child2 = new Unit(childData2);
-	
+
 		children.push_back(_mutate(child1));
 		children.push_back(_mutate(child2));
 	}
@@ -135,12 +179,12 @@ Unit* GA::_selectPopulation()
 		parents[i] = par;
 	}
 	sort(parents.begin(), parents.end(), sortByFirstAsc);
-	vector<Unit*> children = _breed(parents);
+	vector<Unit*> children = _parallel_breed(parents, parents.size());
 	vector<pair<int, Unit*>> topChildren;
 	for (int i = 0; i < populationSize; i++)
 	{
 		pair<int, Unit*> par;
-		par.first =  children[i]->getQuality();
+		par.first = children[i]->getQuality();
 		par.second = children[i];
 		topChildren.push_back(par);
 	}

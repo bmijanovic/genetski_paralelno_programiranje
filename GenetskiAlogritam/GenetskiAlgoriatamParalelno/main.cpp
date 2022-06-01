@@ -10,7 +10,7 @@
 using namespace std;
 using namespace tbb;
 
-void loadData(int *maxWeight, list<pair<int, int>> *objects)
+void loadData(int* maxWeight, list<pair<int, int>>* objects)
 {
 	ifstream infile;
 	string firstLine;
@@ -19,7 +19,7 @@ void loadData(int *maxWeight, list<pair<int, int>> *objects)
 	getline(infile, firstLine);
 	*maxWeight = stoi(firstLine);
 	string line;
-	while(getline(infile, line))
+	while (getline(infile, line))
 	{
 		size_t pos = 0;
 		string tokeni[2];
@@ -56,11 +56,11 @@ int main()
 	int i = 0;
 
 	vector<int> dp(maxWeight + 1, 0);
-	for(it = objects.begin(); it != objects.end(); it++)
+	for (it = objects.begin(); it != objects.end(); it++)
 	{
 		weights[i] = it->first;
 		values[i] = it->second;
-		for (int j = maxWeight; j >= weights[i]; j--) 
+		for (int j = maxWeight; j >= weights[i]; j--)
 		{
 			dp[j] = max(dp[j], dp[j - weights[i]] + values[i]);
 		}
@@ -80,11 +80,11 @@ int main()
 
 
 	GA ga(1024, 100, 0.1, 0.01);
-	
+
 	tick_count startTime = tick_count::now();
 	ga.simulate();
 	tick_count endTime = tick_count::now();
-	cout << "Serial time: \t\t\t" << (endTime - startTime).seconds() << " seconds\n";
+	cout << "Paralel time: \t\t\t" << (endTime - startTime).seconds() << " seconds\n";
 
 	return 0;
 }
