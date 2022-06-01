@@ -2,11 +2,13 @@
 #include <iostream>
 #include <list>
 #include <string>
+#include <tbb/tick_count.h>
 
 #include "GA.h"
 #include "Unit.h"
 
 using namespace std;
+using namespace tbb;
 
 void loadData(int *maxWeight, list<pair<int, int>> *objects)
 {
@@ -76,8 +78,13 @@ int main()
 	Unit::maxWeight = maxWeight;
 	Unit::dimension = size;
 
-	GA ga(1000, 200, 0.1, 0.01);
+
+	GA ga(1000, 100, 0.1, 0.01);
+	
+	tick_count startTime = tick_count::now();
 	ga.simulate();
+	tick_count endTime = tick_count::now();
+	cout << "Serial time: \t\t\t" << (endTime - startTime).seconds() << " seconds\n";
 
 	return 0;
 }

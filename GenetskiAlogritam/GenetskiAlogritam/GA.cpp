@@ -5,14 +5,14 @@
 #include <algorithm>
 using namespace std;
 
-bool sortByFirstAsc(const pair<int, Unit>& a,
-	const pair<int, Unit>& b)
+bool sortByFirstAsc(const pair<int, Unit*>& a,
+	const pair<int, Unit*>& b)
 {
 	return (a.first < b.first);
 }
 
-bool sortByFirstDesc(const pair<int, Unit>& a,
-	const pair<int, Unit>& b)
+bool sortByFirstDesc(const pair<int, Unit*>& a,
+	const pair<int, Unit*>& b)
 {
 	return (a.first > b.first);
 }
@@ -23,24 +23,24 @@ GA::GA(int populationSize = 1000, int iterations = 100, double mutationFactor = 
 	this->mutationFactor = mutationFactor;
 	this->elitism = elitism;
 	this->populationSize = populationSize;
-	this->units = vector<Unit>(populationSize);
+	this->units = vector<Unit*>(populationSize);
 	for (int i = 0; i < populationSize; i++)
 	{
-		this->units[i] = *(new Unit());
+		this->units[i] = new Unit();
 	}
 	this->rng = mt19937(chrono::system_clock::now().time_since_epoch().count());
 }
 
 void GA::simulate()	
 {
-	Unit best;
+	Unit* best = new Unit();
 	for (int i = 0; i < iterations; i++)
 	{
 		cout << "Iteration start: " << i << endl;
 		best = _selectPopulation();
 		cout << "Iteration end" << endl;
 	}
-	cout << best.getScore() << endl << best.getWeight() << endl;
+	cout << best->getQuality() << endl << best->getWeight() << endl;
 }
 
 double GetTime(){
@@ -50,7 +50,7 @@ double GetTime(){
 double totalRand = 0;
 double totalSort = 0;
 
-pair<vector<int>, vector<int>> GA::_parentSelection(vector<pair<int, Unit>> &parents)
+pair<vector<int>, vector<int>> GA::_parentSelection(vector<pair<int, Unit*>> &parents)
 {
 	vector<pair<int, vector<int>>> rangedParents(populationSize);
 	double start = GetTime();
@@ -58,7 +58,7 @@ pair<vector<int>, vector<int>> GA::_parentSelection(vector<pair<int, Unit>> &par
 	{
 		pair<int, vector<int>> par;
 		par.first = i * rand01();
-		par.second = parents[i].second.data;
+		par.second = parents[i].second->data;
 		rangedParents[i] = par;
 	}
 	totalRand += GetTime() - start;
@@ -88,9 +88,9 @@ pair<vector<int>, vector<int>> GA::_parentSelection(vector<pair<int, Unit>> &par
 	return returnValue;
 }
 
-vector<Unit> GA::_breed(vector<pair<int, Unit>> parents)
+vector<Unit*> GA::_breed(vector<pair<int, Unit*>> parents)
 {
-	vector<Unit> children;
+	vector<Unit*> children;
 	//pair<vector<int>, vector<int>> parentsData = _parentSelection(parents);
 	for (int i = 0; i < populationSize / 2; i++)
 	{
@@ -107,8 +107,9 @@ vector<Unit> GA::_breed(vector<pair<int, Unit>> parents)
 		childData1.insert(childData1.end(), beginSecond + splitPosition, endSecond);
 		childData2.insert(childData2.end(), beginFirst + splitPosition, endFirst);
 
-		Unit child1(childData1);
-		Unit child2(childData2);
+		Unit* child1 = new Unit(childData1);
+		Unit* child2 = new Unit(childData2);
+	
 		children.push_back(_mutate(child1));
 		children.push_back(_mutate(child2));
 	}
@@ -122,46 +123,48 @@ double GA::rand01()
 	return (double)(rng() % 1000000) / 1000000;
 }
 
-Unit GA::_mutate(Unit& child)
+Unit* GA::_mutate(Unit* child)
 {
 	for (int i = 0; i < Unit::dimension; i++)
 	{
 		if (rand01() < mutationFactor)
-			child.data[i] = 1 - child.data[i];
+			child->data[i] = 1 - child->data[i];
 	}
 	return child;
 }
 
 
 
-Unit GA::_selectPopulation()
+Unit* GA::_selectPopulation()
 {
-	vector<pair<int, Unit>> parents(populationSize);
+	vector<pair<int, Unit*>> parents(populationSize);
 	for (int i = 0; i < populationSize; i++)
 	{
-		pair<int, Unit> par;
-		par.first = this->units[i].getQuality();
+		pair<int, Unit*> par;
+		par.first = this->units[i]->getQuality();
 		par.second = this->units[i];
 		parents[i] = par;
 	}
 	sort(parents.begin(), parents.end(), sortByFirstAsc);
-	vector<Unit> children = _breed(parents);
-	vector<pair<int, Unit>> topChildren;
+	vector<Unit*> children = _breed(parents);
+	vector<pair<int, Unit*>> topChildren;
 	for (int i = 0; i < populationSize; i++)
 	{
-		pair<int, Unit> par;
-		par.first = children[i].getQuality();
+		pair<int, Unit*> par;
+		par.first =  children[i]->getQuality();
 		par.second = children[i];
 		topChildren.push_back(par);
 	}
 	sort(topChildren.begin(), topChildren.end(), sortByFirstDesc);
-	vector<pair<int, Unit>> topParents;
+	vector<pair<int, Unit*>> topParents;
 	int numOfTopParents = populationSize * elitism;
+	for (int i = parents.size() - numOfTopParents; i < parents.size(); i++)
+		topParents.push_back(parents[i]);
 	units.clear();
 	for (int i = 0; i < numOfTopParents; i++)
 	{
-		if (parents[populationSize - i - 1].first > topChildren[0].first)
-			units.push_back(parents[i].second);
+		if (topParents[i].first > topChildren[0].first)
+			units.push_back(topParents[i].second);
 	}
 	int numOdTopChildren = populationSize - units.size();
 	for (int i = 0; i < numOdTopChildren; i++)
