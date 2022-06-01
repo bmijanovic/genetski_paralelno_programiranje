@@ -97,9 +97,9 @@ vector<Unit*> GA::_parallel_breed(vector<pair<int, Unit*>> parents, int parentsS
 	else
 	{
 		int size = parentsSize / 4;
-		vector<pair<int, Unit*>>::const_iterator first = parents.begin();
+		/*vector<pair<int, Unit*>>::const_iterator first = parents.begin();
 
-		/*vector<pair<int, Unit*>> v1(first, first + size);
+		vector<pair<int, Unit*>> v1(first, first + size);
 		vector<pair<int, Unit*>> v2(first + size, first + size * 2);
 		vector<pair<int, Unit*>> v3(first + size * 2, first + size * 3);
 		vector<pair<int, Unit*>> v4(first + size * 3, first + size * 4);
@@ -113,6 +113,7 @@ vector<Unit*> GA::_parallel_breed(vector<pair<int, Unit*>> parents, int parentsS
 		g.run([&] {children2 = _parallel_breed(parents, size); });
 		g.run([&] {children3 = _parallel_breed(parents, size); });
 		g.run([&] {children4 = _parallel_breed(parents, size); });
+
 		g.wait();
 	}
 	children.insert(children.end(), children1.begin(), children1.end());

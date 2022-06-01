@@ -79,7 +79,7 @@ int main()
 	Unit::dimension = size;
 
 
-	GA ga(1024, 100, 0.1, 0.01);
+	GA ga(1024, 150, 0.1, 0.01);
 	
 	tick_count startTime = tick_count::now();
 	ga.simulate();
